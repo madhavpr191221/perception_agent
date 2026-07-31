@@ -25,3 +25,9 @@ main.py
 # Optional: keep only relevant sample images
 images/*
 !images/street.jpg
+
+# Model weights
+*.pt
+
+# Generated perception artifacts
+artifacts/
