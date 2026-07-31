@@ -38,15 +38,21 @@ def main():
         "messages": [human_message],
     }
 
-    result = graph.invoke(initial_state)
+    # result = graph.invoke(initial_state)
 
 
-    print("\nFinal answer:\n")
-    print(result["messages"][-1].content)
+    # print("\nFinal answer:\n")
+    # print(result["messages"][-1].content)
 
-    print("\nDetected objects:\n")
-    print(result["detected_objects"])
+    # print("\nDetected objects:\n")
+    # print(result["detected_objects"])
 
+    for chunk in graph.stream(
+    initial_state,
+    stream_mode="updates"
+            ):
+        print("\n--- GRAPH UPDATE ---")
+        print(chunk)
 
 if __name__ == "__main__":
     main()

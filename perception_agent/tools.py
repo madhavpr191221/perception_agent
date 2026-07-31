@@ -1,10 +1,9 @@
-# perception_agent/tools.py
-
 import json
+from pathlib import Path
 from typing import Annotated
 
 from langchain.tools import tool
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import InjectedToolCallId
 
 from langgraph.prebuilt import InjectedState
@@ -13,8 +12,13 @@ from langgraph.types import Command
 from perception_agent.models import (
     get_detector,
     get_detector_device,
+    get_vlm,
 )
 from perception_agent.state import PerceptionState
+from perception_agent.vision_utils import (
+    encode_image_base64,
+    save_crop,
+)
 
 
 @tool
@@ -83,7 +87,76 @@ def detect_objects(
         }
     )
 
+@tool
+def inspect_crop(
+    bbox: list[int],
+    state: Annotated[PerceptionState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId],
+) -> Command:
+    """
+    Inspect a specific region of the current image more closely.
+
+    Use bbox = [x1, y1, x2, y2].
+    """
+
+    image_path = state["image_path"]
+
+    crop_path = Path("artifacts/crops") / f"{tool_call_id}.jpg"
+
+    save_crop(
+        image_path=image_path,
+        bbox=bbox,
+        output_path=crop_path,
+    )
+
+    image_base64, mime_type = encode_image_base64(crop_path)
+
+    inspection_prompt = (
+        "Inspect this cropped region carefully. "
+        "Describe what is actually visible. "
+        "Focus on objects, spatial relationships, occlusions, "
+        "and anything genuinely unusual. "
+        "Do not assume that an anomaly exists."
+    )
+
+    message = HumanMessage(
+        content=[
+            {
+                "type": "text",
+                "text": inspection_prompt,
+            },
+            {
+                "type": "image",
+                "base64": image_base64,
+                "mime_type": mime_type,
+            },
+        ]
+    )
+
+    response = get_vlm().invoke([message])
+
+    inspection = {
+        "bbox": bbox,
+        "crop_path": str(crop_path),
+        "analysis": response.content,
+    }
+
+    return Command(
+        update={
+            "inspected_regions": [inspection],
+            "messages": [
+                ToolMessage(
+                    content=json.dumps(
+                        inspection,
+                        indent=2,
+                    ),
+                    tool_call_id=tool_call_id,
+                )
+            ],
+        }
+    )
 
 TOOLS = [
     detect_objects,
+    inspect_crop,
 ]
