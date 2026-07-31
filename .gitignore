@@ -1,0 +1,27 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+.venv/
+.env
+__pycache__/
+*.pyc
+
+# Ignore unrelated practice work
+langgraph/
+src/
+main.py
+
+# Keep perception work
+# perception_agent/ is NOT ignored
+
+# Optional: keep only relevant sample images
+images/*
+!images/street.jpg
