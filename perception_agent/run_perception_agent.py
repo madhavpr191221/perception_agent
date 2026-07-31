@@ -34,25 +34,18 @@ def main():
         "image_path": image_path,
         "detected_objects": [],
         "inspected_regions": [],
+        "debug_artifacts": [],
         "current_hypothesis": None,
         "messages": [human_message],
     }
 
-    # result = graph.invoke(initial_state)
-
-
-    # print("\nFinal answer:\n")
-    # print(result["messages"][-1].content)
-
-    # print("\nDetected objects:\n")
-    # print(result["detected_objects"])
-
     for chunk in graph.stream(
-    initial_state,
-    stream_mode="updates"
-            ):
+        initial_state,
+        stream_mode="updates",
+    ):
         print("\n--- GRAPH UPDATE ---")
         print(chunk)
+
 
 if __name__ == "__main__":
     main()

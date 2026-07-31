@@ -16,7 +16,11 @@ from perception_agent.models import (
 )
 from perception_agent.state import PerceptionState
 from perception_agent.vision_utils import (
+    clamp_bbox,
     encode_image_base64,
+    expand_bbox,
+    load_image,
+    save_detection_overlay,
     save_crop,
 )
 
@@ -45,6 +49,7 @@ def detect_objects(
 
     result = results[0]
 
+    image = load_image(image_path)
     detections = []
 
     for box in result.boxes:
@@ -53,28 +58,47 @@ def detect_objects(
 
         x1, y1, x2, y2 = box.xyxy[0].tolist()
 
-        detection = {
-            "label": result.names[class_id],
-            "confidence": round(confidence, 4),
-            "bbox": [
+        bbox = clamp_bbox(
+            bbox=[
                 round(x1),
                 round(y1),
                 round(x2),
                 round(y2),
             ],
+            image_size=image.size,
+        )
+
+        detection = {
+            "label": result.names[class_id],
+            "confidence": round(confidence, 4),
+            "bbox": bbox,
         }
 
         detections.append(detection)
 
+    overlay_path = Path("artifacts/debug") / f"{tool_call_id}_detections.jpg"
+    save_detection_overlay(
+        image_path=image_path,
+        detections=detections,
+        output_path=overlay_path,
+    )
+
     tool_summary = {
         "num_objects": len(detections),
         "detections": detections,
+        "overlay_path": str(overlay_path),
     }
 
     return Command(
         update={
             "detected_objects": detections,
-
+            "debug_artifacts": [
+                {
+                    "type": "detection_overlay",
+                    "path": str(overlay_path),
+                    "num_objects": len(detections),
+                }
+            ],
             "messages": [
                 ToolMessage(
                     content=json.dumps(
@@ -103,9 +127,17 @@ def inspect_crop(
 
     crop_path = Path("artifacts/crops") / f"{tool_call_id}.jpg"
 
+    image = load_image(image_path)
+
+    expanded_bbox = expand_bbox(
+        bbox=bbox,
+        image_size=image.size,
+        scale=0.3,
+    )
+
     save_crop(
         image_path=image_path,
-        bbox=bbox,
+        bbox=expanded_bbox,
         output_path=crop_path,
     )
 
@@ -136,7 +168,8 @@ def inspect_crop(
     response = get_vlm().invoke([message])
 
     inspection = {
-        "bbox": bbox,
+        "requested_bbox": bbox,
+        "inspected_bbox": expanded_bbox,
         "crop_path": str(crop_path),
         "analysis": response.content,
     }
@@ -144,6 +177,14 @@ def inspect_crop(
     return Command(
         update={
             "inspected_regions": [inspection],
+            "debug_artifacts": [
+                {
+                    "type": "crop",
+                    "path": str(crop_path),
+                    "requested_bbox": bbox,
+                    "inspected_bbox": expanded_bbox,
+                }
+            ],
             "messages": [
                 ToolMessage(
                     content=json.dumps(

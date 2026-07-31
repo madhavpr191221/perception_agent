@@ -10,4 +10,6 @@ class PerceptionState(MessagesState):
 
     inspected_regions: Annotated[list[dict], operator.add]
 
+    debug_artifacts: Annotated[list[dict], operator.add]
+
     current_hypothesis: str | None

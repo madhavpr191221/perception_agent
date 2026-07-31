@@ -4,7 +4,7 @@ import base64
 import mimetypes
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 
 def load_image(image_path: str | Path) -> Image.Image:
@@ -48,7 +48,10 @@ def crop_image(
     """
     image = load_image(image_path)
 
-    x1, y1, x2, y2 = bbox
+    x1, y1, x2, y2 = clamp_bbox(
+        bbox=bbox,
+        image_size=image.size,
+    )
 
     return image.crop((x1, y1, x2, y2))
 
@@ -74,6 +77,112 @@ def save_crop(
     )
 
     crop.save(output_path)
+
+    return output_path
+
+def clamp_bbox(
+    bbox: list[int],
+    image_size: tuple[int, int],
+) -> list[int]:
+    """
+    Clamp bbox = [x1, y1, x2, y2] to image bounds.
+    """
+    if len(bbox) != 4:
+        raise ValueError(f"Expected bbox with 4 coordinates, got: {bbox}")
+
+    x1, y1, x2, y2 = bbox
+    image_width, image_height = image_size
+
+    x1 = max(0, min(image_width, round(x1)))
+    y1 = max(0, min(image_height, round(y1)))
+    x2 = max(0, min(image_width, round(x2)))
+    y2 = max(0, min(image_height, round(y2)))
+
+    left = min(x1, x2)
+    top = min(y1, y2)
+    right = max(x1, x2)
+    bottom = max(y1, y2)
+
+    if left == right or top == bottom:
+        raise ValueError(f"Degenerate bbox after clamping: {bbox}")
+
+    return [left, top, right, bottom]
+
+
+def expand_bbox(
+    bbox: list[int],
+    image_size: tuple[int, int],
+    scale: float = 0.3,
+) -> list[int]:
+    """
+    Expand bbox = [x1, y1, x2, y2] by a fraction of its width/height.
+
+    scale=0.3 means add 30% context on each side.
+    """
+
+    x1, y1, x2, y2 = clamp_bbox(
+        bbox=bbox,
+        image_size=image_size,
+    )
+
+    box_width = x2 - x1
+    box_height = y2 - y1
+
+    dx = box_width * scale
+    dy = box_height * scale
+
+    expanded = clamp_bbox(
+        bbox=[
+            round(x1 - dx),
+            round(y1 - dy),
+            round(x2 + dx),
+            round(y2 + dy),
+        ],
+        image_size=image_size,
+    )
+
+    return expanded
+
+
+def save_detection_overlay(
+    image_path: str | Path,
+    detections: list[dict],
+    output_path: str | Path,
+) -> Path:
+    """
+    Save a copy of the image with detector boxes drawn over it.
+    """
+    image = load_image(image_path)
+    draw = ImageDraw.Draw(image)
+
+    try:
+        font = ImageFont.load_default()
+    except OSError:
+        font = None
+
+    for detection in detections:
+        bbox = clamp_bbox(
+            bbox=detection["bbox"],
+            image_size=image.size,
+        )
+        label = detection["label"]
+        confidence = detection["confidence"]
+        text = f"{label} {confidence:.2f}"
+
+        draw.rectangle(bbox, outline="red", width=3)
+        text_bbox = draw.textbbox((bbox[0], bbox[1]), text, font=font)
+        text_height = text_bbox[3] - text_bbox[1]
+        text_y = max(0, bbox[1] - text_height - 4)
+        label_box = [bbox[0], text_y, text_bbox[2] + 4, text_y + text_height + 4]
+        draw.rectangle(label_box, fill="red")
+        draw.text((bbox[0] + 2, text_y + 2), text, fill="white", font=font)
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    image.save(output_path)
 
     return output_path
 

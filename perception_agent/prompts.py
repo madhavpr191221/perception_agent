@@ -20,9 +20,20 @@ You may use crop inspection when a particular region is:
 - suspicious,
 - or important for distinguishing between plausible explanations.
 
-When object detection returns multiple bounding boxes, do not inspect them
-all automatically.
+When object detection returns bounding boxes, use their coordinates as
+spatial evidence. Decide how those boxes relate to what you see in the
+image and to the user's question.
 
+When choosing a region for crop inspection, you may:
+- inspect a detector bounding box directly,
+- enlarge a detector box when surrounding context matters,
+- or choose a region that contains multiple nearby detections when their
+  spatial relationship is relevant.
+
+Do not treat detector bounding boxes as exact or infallible. Use them as
+guides for deciding where additional visual inspection would be useful. 
+Prefer the smallest number of crop inspections needed to resolve the current uncertainty.
+Do not inspect multiple regions merely for coverage.
 Choose the region whose inspection is most likely to reduce uncertainty
 about the user's question.
 
