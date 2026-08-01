@@ -5,29 +5,27 @@ from typing import Annotated
 from langchain.tools import tool
 from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import InjectedToolCallId
-
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 
-from perception_agent.models import (
+from perception_agent.vision.models import (
     get_detector,
     get_detector_device,
     get_vlm,
 )
-from perception_agent.state import PerceptionState
-from perception_agent.vision_utils import (
+from perception_agent.vision.utils import (
     clamp_bbox,
     encode_image_base64,
     expand_bbox,
     load_image,
-    save_detection_overlay,
     save_crop,
+    save_detection_overlay,
 )
 
 
 @tool
 def detect_objects(
-    state: Annotated[PerceptionState, InjectedState],
+    image_path: Annotated[str, InjectedState("image_path")],
     tool_call_id: Annotated[str, InjectedToolCallId],
 ) -> Command:
     """
@@ -36,7 +34,6 @@ def detect_objects(
     The detections are stored in graph state under `detected_objects`.
     """
 
-    image_path = state["image_path"]
 
     detector = get_detector()
     device = get_detector_device()
@@ -114,7 +111,7 @@ def detect_objects(
 @tool
 def inspect_crop(
     bbox: list[int],
-    state: Annotated[PerceptionState, InjectedState],
+    image_path: Annotated[str, InjectedState("image_path")],
     tool_call_id: Annotated[str, InjectedToolCallId],
 ) -> Command:
     """
@@ -123,7 +120,6 @@ def inspect_crop(
     Use bbox = [x1, y1, x2, y2].
     """
 
-    image_path = state["image_path"]
 
     crop_path = Path("artifacts/crops") / f"{tool_call_id}.jpg"
 

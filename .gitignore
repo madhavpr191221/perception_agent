@@ -16,7 +16,6 @@ __pycache__/
 
 # Ignore unrelated practice work
 langgraph/
-src/
 main.py
 
 # Keep perception work

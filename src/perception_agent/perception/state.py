@@ -1,7 +1,7 @@
-# perception_agent/state.py
 from typing import Annotated
 from langgraph.graph import MessagesState
 import operator
+
 
 class PerceptionState(MessagesState):
     image_path: str
@@ -13,3 +13,5 @@ class PerceptionState(MessagesState):
     debug_artifacts: Annotated[list[dict], operator.add]
 
     current_hypothesis: str | None
+
+    perception_report: str | None

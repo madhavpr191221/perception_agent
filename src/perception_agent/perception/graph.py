@@ -1,12 +1,10 @@
-# perception_agent/graph.py
 
 from langgraph.graph import START, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
-from perception_agent.assistant import assistant_node
-from perception_agent.state import PerceptionState
-from perception_agent.tools import TOOLS
-
+from perception_agent.perception.assistant import assistant_node
+from perception_agent.perception.state import PerceptionState
+from perception_agent.perception.tools import TOOLS
 
 tool_node = ToolNode(TOOLS)
 
